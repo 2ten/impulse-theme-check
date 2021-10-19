@@ -57,10 +57,6 @@
           {%- endif -%}
           {%- if related_collection.products_count > 1 -%}
             {%- liquid
-              if related_collection.products_count > 0
-                assign number_of_products = related_collection.products_count
-              endif
-
               case number_of_products
                 when 1
                   assign grid_item_width = ''
@@ -78,7 +74,7 @@
             -%}
             <div class="product-recommendations">
               <div class="grid grid--uniform" data-aos="overflow__animation">
-                {%- for product in related_collection.products -%}
+                {%- for product in related_collection.products limit: number_of_products -%}
                   {%- render 'product-grid-item', product: product, grid_item_width: grid_item_width -%}
                 {%- endfor -%}
               </div>
