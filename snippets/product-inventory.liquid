@@ -64,6 +64,7 @@
    {% for variant in variants_with_inventory_tracking %}
     window.inventories['{{ product.id }}'][{{ variant.id }}] = {
       'quantity': {{ variant.inventory_quantity | default: 0 }},
+      'policy': '{{ variant.inventory_policy | default: false }}',
       'incoming': '{{ variant.incoming | default: false }}',
       'next_incoming_date': {{ variant.next_incoming_date | date: format: 'date' | json }}
     };
@@ -86,6 +87,7 @@
       class="js-variant-inventory-data"
       data-id="{{ variant.id }}"
       data-quantity="{{ variant.inventory_quantity | default: 0 }}"
+      data-policy="{{ variant.inventory_policy | default: false }}"
       data-incoming="{{ variant.incoming | default: false }}"
       data-date="{{ variant.next_incoming_date | date: format: 'date' }}"
     >

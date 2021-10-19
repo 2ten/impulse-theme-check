@@ -14,6 +14,21 @@
 window.theme = window.theme || {};
 window.Shopify = window.Shopify || {};
 
+// Patch Flickity resize event for iOS15 jank fix
+(function() {
+  var originalResizeMethod = Flickity.prototype.resize;
+  var lastWidth = window.innerWidth;
+
+  Flickity.prototype.resize = function() {
+    if (window.innerWidth === lastWidth) {
+      return;
+    }
+
+    lastWidth = window.innerWidth;
+    originalResizeMethod.apply(this, arguments); // Call original method
+  }
+})();
+
 theme.config = {
   bpSmall: false,
   hasSessionStorage: true,
@@ -2231,7 +2246,7 @@ lazySizesConfig.expFactor = 4;
         open: '.js-modal-open-' + name,
         openClass: 'modal--is-active',
         closingClass: 'modal--is-closing',
-        bodyOpenClass: 'modal-open',
+        bodyOpenClass: ['modal-open'],
         bodyOpenSolidClass: 'modal-open--solid',
         bodyClosingClass: 'modal-closing',
         closeOffContentClick: true
@@ -2300,7 +2315,7 @@ lazySizesConfig.expFactor = 4;
   
       this.modal.classList.add(this.config.openClass);
   
-      document.documentElement.classList.add(this.config.bodyOpenClass);
+      document.documentElement.classList.add(...this.config.bodyOpenClass);
   
       if (this.isSolid) {
         document.documentElement.classList.add(this.config.bodyOpenSolidClass);
@@ -2341,7 +2356,7 @@ lazySizesConfig.expFactor = 4;
       this.modal.classList.remove(this.config.openClass);
       this.modal.classList.add(this.config.closingClass);
   
-      document.documentElement.classList.remove(this.config.bodyOpenClass);
+      document.documentElement.classList.remove(...this.config.bodyOpenClass);
       document.documentElement.classList.add(this.config.bodyClosingClass);
   
       window.setTimeout(function() {
@@ -3446,6 +3461,7 @@ lazySizesConfig.expFactor = 4;
   
     var modal = new theme.Modals('VideoModal', 'video-modal', {
       closeOffContentClick: true,
+      bodyOpenClass: ['modal-open', 'video-modal-open'],
       solid: true
     });
   
@@ -3677,8 +3693,10 @@ lazySizesConfig.expFactor = 4;
       }, 1000);
   
       // Toggle new/edit address forms
-      document.querySelector('.address-new-toggle').addEventListener('click', function() {
-        newAddressForm.classList.toggle('hide');
+      document.querySelectorAll('.address-new-toggle').forEach(el => {
+        el.addEventListener('click', function() {
+          newAddressForm.classList.toggle('hide');
+        });
       });
   
       document.querySelectorAll('.address-edit-toggle').forEach(el => {
@@ -6363,8 +6381,13 @@ lazySizesConfig.expFactor = 4;
   
         // image set names variant change listeners
         if (this.settings.imageSetName) {
-          this.settings.imageSetIndex = this.container.querySelector('.variant-input-wrap[data-handle="'+this.settings.imageSetName+'"]').dataset.index;
-          this.container.on('variantChange' + this.settings.namespace, this.updateImageSet.bind(this))
+          var variantWrapper = this.container.querySelector('.variant-input-wrap[data-handle="'+this.settings.imageSetName+'"]');
+          if (variantWrapper) {
+            this.settings.imageSetIndex = variantWrapper.dataset.index;
+            this.container.on('variantChange' + this.settings.namespace, this.updateImageSet.bind(this))
+          } else {
+            this.settings.imageSetName = null;
+          }
         }
       },
   
@@ -6538,6 +6561,14 @@ lazySizesConfig.expFactor = 4;
   
         if (variant.inventory_management === 'shopify' && window.inventories && window.inventories[this.productId]) {
           var variantInventoryObject = window.inventories[this.productId][variant.id];
+  
+          // Hide stock if policy is continue
+          if (variantInventoryObject.policy === 'continue') {
+            this.toggleInventoryQuantity(variant, false);
+            this.toggleIncomingInventory(false);
+            return;
+          }
+  
           var quantity = variantInventoryObject.quantity;
           var showInventory = true;
           var showIncomingInventory = false;
@@ -6600,6 +6631,7 @@ lazySizesConfig.expFactor = 4;
   
       toggleIncomingInventory: function(show, available, date) {
         var el = this.container.querySelector(this.selectors.incomingInventory);
+        var salesPoint = el.closest('.product-block');
   
         if (!el) {
           return;
@@ -6617,6 +6649,9 @@ lazySizesConfig.expFactor = 4;
           }
   
           el.classList.remove(classes.hidden);
+          if (salesPoint) {
+            salesPoint.classList.remove(classes.hidden);
+          }
           textEl.textContent = string;
         } else {
           el.classList.add(classes.hidden);
@@ -7064,6 +7099,7 @@ lazySizesConfig.expFactor = 4;
           el.querySelectorAll('.js-variant-inventory-data').forEach(el => {
             window.inventories[productId][el.dataset.id] = {
               'quantity': el.dataset.quantity,
+              'policy': el.dataset.policy,
               'incoming': el.dataset.incoming,
               'next_incoming_date': el.dataset.date
             }
